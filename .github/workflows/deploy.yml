@@ -30,9 +30,9 @@ jobs:
         aws configure set region $AWS_REGION
 
     - name: Save EC2 SSH Key
-  run: |
-    echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" | sed 's/\\n/\n/g' > cicd_keypair.pem
-    chmod 600 cicd_keypair.pem
+    run: |
+      echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" | sed 's/\\n/\n/g' > cicd_keypair.pem
+      chmod 600 cicd_keypair.pem
 
 - name: Test SSH Connection
   run: |
