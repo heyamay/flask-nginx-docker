@@ -3,7 +3,7 @@ name: Deploy Flask App to EC2
 on:
   push:
     branches:
-      - master  # Trigger on push to main branch (change if you use another branch)
+      - master
 
 jobs:
   deploy:
@@ -23,23 +23,33 @@ jobs:
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION: "ap-south-1"  # Update your region
+        AWS_REGION: "ap-south-1"
       run: |
         aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
         aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
         aws configure set region $AWS_REGION
 
+    - name: Write SSH key to file
+      run: |
+        echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > cicd-keypair.pem
+        chmod 600 cicd-keypair.pem
+
+    - name: Test SSH Connection
+      run: |
+        ssh -o StrictHostKeyChecking=no -i cicd-keypair.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} "echo SSH connection successful"
+
     - name: SSH into EC2 and deploy Docker container
       uses: appleboy/ssh-action@v0.1.0
       with:
-        host: ${{ secrets.EC2_PUBLIC_IP }}  # EC2 Public IP
+        host: ${{ secrets.EC2_PUBLIC_IP }}
         username: ec2-user
-        key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # Store your private key in GitHub Secrets
+        key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
         script: |
-          cd flask-nginx-docker  # Navigate to your project directory
-          docker-compose down  # Stop running containers (if any)
-          docker-compose up -d --build  # Build and start containers
+          cd flask-nginx-docker
+          docker-compose down
+          docker-compose up -d --build
 
     - name: Restart Nginx on EC2
       run: |
-        ssh -i "cicd-keypair.pem" ec2-user@${{ secrets.EC2_PUBLIC_IP }} "sudo systemctl restart nginx"
+        ssh -o StrictHostKeyChecking=no -i cicd-keypair.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} "sudo systemctl restart nginx"
+
