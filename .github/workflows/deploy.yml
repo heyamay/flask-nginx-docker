@@ -29,25 +29,26 @@ jobs:
         aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
         aws configure set region $AWS_REGION
 
-    - name: Write SSH key to file
-      run: |
-        echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > cicd-keypair.pem
-        chmod 600 cicd-keypair.pem
+    - name: Save EC2 SSH Key
+  run: |
+    echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" | sed 's/\\n/\n/g' > cicd_keypair.pem
+    chmod 600 cicd_keypair.pem
 
-    - name: Test SSH Connection
-      run: |
-        ssh -o StrictHostKeyChecking=no -i cicd-keypair.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} "echo SSH connection successful"
+- name: Test SSH Connection
+  run: |
+    ssh -o StrictHostKeyChecking=no -i cicd_keypair.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} "echo SSH connection successful"
 
-    - name: SSH into EC2 and deploy Docker container
-      uses: appleboy/ssh-action@v0.1.0
-      with:
-        host: ${{ secrets.EC2_PUBLIC_IP }}
-        username: ec2-user
-        key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-        script: |
-          cd flask-nginx-docker
-          docker-compose down
-          docker-compose up -d --build
+- name: SSH into EC2 and deploy Docker container
+  uses: appleboy/ssh-action@v0.1.0
+  with:
+    host: ${{ secrets.EC2_PUBLIC_IP }}
+    username: ec2-user
+    key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+    script: |
+      cd flask-nginx-docker
+      docker-compose down
+      docker-compose up -d --build
+
 
     - name: Restart Nginx on EC2
       run: |
